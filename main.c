@@ -46,49 +46,20 @@
 
 #include "GenericTypeDefs.h"
 #include "Compiler.h"
-
-#pragma config PMDL1WAY = ON            // Peripheral Module Disable Configuration (Allow only one reconfiguration)
-#pragma config IOL1WAY = ON             // Peripheral Pin Select Configuration (Allow only one reconfiguration)
-#pragma config FUSBIDIO = OFF           // USB USID Selection (Controlled by Port Function)
-#pragma config FVBUSONIO = OFF          // USB VBUS ON Selection (Controlled by Port Function)
-
-// external 20  / 4              * 20             / 2 = 50
-// FPLLIDIV = DIV_5, FPLLMUL = MUL_20, FPLLODIV = DIV_2, FWDTEN = OFF
-// DEVCFG2
-#pragma config FPLLIDIV = DIV_4         // PLL Input Divider (4x Divider)
-#pragma config FPLLMUL = MUL_20         // PLL Multiplier (20x Multiplier)
-#pragma config UPLLIDIV = DIV_5         // USB PLL Input Divider (5x Divider)
-#pragma config UPLLEN = ON              // USB PLL Enable (Enabled)
-#pragma config FPLLODIV = DIV_2         // System PLL Output Clock Divider (PLL Divide by 2)
-
-// DEVCFG1
-#pragma config FNOSC = PRIPLL           // Oscillator Selection Bits (Primary Osc w/PLL (XT+,HS+,EC+PLL))
-#pragma config FSOSCEN = OFF            // Secondary Oscillator Enable (Disabled)
-#pragma config IESO = ON                // Internal/External Switch Over (Enabled)
-#pragma config POSCMOD = HS             // Primary Oscillator Configuration (HS osc mode)
-#pragma config OSCIOFNC = OFF           // CLKO Output Signal Active on the OSCO Pin (Disabled)
-#pragma config FPBDIV = DIV_1           // Peripheral Clock Divisor (Pb_Clk is Sys_Clk/1)
-#pragma config FCKSM = CSECME           // Clock Switching and Monitor Selection (Clock Switch Enable, FSCM Enabled)
-#pragma config WDTPS = PS1              // Watchdog Timer Postscaler (1:1)
-#pragma config WINDIS = OFF             // Watchdog Timer Window Enable (Watchdog Timer is in Non-Window Mode)
-#pragma config FWDTEN = OFF             // Watchdog Timer Enable (WDT Disabled (SWDTEN Bit Controls))
-#pragma config FWDTWINSZ = WISZ_25      // Watchdog Timer Window Size (Window Size is 25%)
-
-// DEVCFG0
-#pragma config JTAGEN = ON              // JTAG Enable (JTAG Port Enabled)
-#pragma config ICESEL = ICS_PGx1        // ICE/ICD Comm Channel Select (Communicate on PGEC1/PGED1)
-#pragma config PWP = OFF                // Program Flash Write Protect (Disable)
-#pragma config BWP = OFF                // Boot Flash Write Protect bit (Protection Disabled)
-#pragma config CP = OFF                 // Code Protect (Protection Disabled)
+#include <configwords.h>
 
 /** V A R I A B L E S ********************************************************/
 #pragma udata
-char asInBuff[CDC_DATA_IN_EP_SIZE];
-char asOutBuff[CDC_DATA_OUT_EP_SIZE];
+//char asInBuff[CDC_DATA_IN_EP_SIZE];
+//char asOutBuff[CDC_DATA_OUT_EP_SIZE];
+char InBuff1[CDC_DATA_IN_EP_SIZE];
+char OutBuff1[CDC_DATA_OUT_EP_SIZE];
+char InBuff2[CDC_DATA_IN_EP_SIZE];
+char OutBuff2[CDC_DATA_OUT_EP_SIZE];
 
 // Buffer Heap di 128 byte
-UINT8_BITS bFlags;
-UINT8 bPosOut;
+//UINT8_BITS bFlags;
+//UINT8 bPosOut;
 
 /** P R I V A T E  P R O T O T Y P E S ***************************************/
 //void USBDeviceTasks(void);
@@ -98,6 +69,19 @@ static __inline void __attribute__((always_inline)) processData(char);
 
 int main(void)
 {
+    BYTE bDataUSBReady1 = 0;
+    BYTE bDataRS232Ready1 = 0;
+    BYTE bDataUSBReady2 = 0;
+    BYTE bDataRS232Ready2 = 0;
+
+    BYTE bCountByte1 = 0;
+    BYTE bCountByte2 = 0;
+
+    BYTE bPosIn1 = 0;
+    BYTE bPosIn2 = 0;
+    BYTE bPosOut1 = 0;
+    BYTE bPosOut2 = 0;
+
     initSystem();
 
     #ifdef USB_INTERRUPT
@@ -112,16 +96,76 @@ int main(void)
 
         if(USBDeviceState < CONFIGURED_STATE || USBSuspendControl==1)
             continue;
-        if(getsUSBUSART(asInBuff, 1)!=0)
-            processData(asInBuff[0]);
+
+        /************* Seriale 1 *****************/
+
+        // Se ci sono dati da trasmettere su USART rileggo da USB
+        if(!bDataUSBReady1)
+        {
+            bCountByte1 = getsUSBUSART(0, InBuff1, sizeof(InBuff1));
+            if(bCountByte1>0)
+            {
+                bDataUSBReady1 = 1;
+                bPosIn1 = 0;
+            }
+        }
+        // Ho preso dati da USB li scrivo su USART se la trasmissione è pronta
+        if(bDataUSBReady1 && TXRdyUSART1())
+        {
+            WriteUSART1(InBuff1[bPosIn1++]);
+            // Una volta che sono stati scritti tutti i byte rileggo da USB
+            if(bPosIn1==bCountByte1)
+                bDataUSBReady1 = 0;
+        }
+            // Se ci sono dati nella USART li leggo e li metto nel buffer
+        if(DataRdyUSART1() && bPosOut1<sizeof(OutBuff1))
+        {
+            OutBuff1[bPosOut1] = ReadUSART1();
+            bPosOut1++;
+        }
         // Se la USB è pronta per trasmettere e ci sono dati li scrivo su USB
         // Se arrivano dati ed il buffer è pieno c'è il rischio di perdere i dati
-        if(USBUSARTIsTxTrfReady() && bPosOut>0)
+        if(USBUSARTIsTxTrfReady(0) && bPosOut1>0)
         {
-            putUSBUSART(asOutBuff, bPosOut);
-            bPosOut = 0;
+            putUSBUSART(0, OutBuff1, bPosOut1);
+            bPosOut1 = 0;
         }
-        CDCTxService();
+        CDCTxService(0);
+
+        /************* Seriale 2 *****************/
+
+        // Se ci sono dati da trasmettere su USART rileggo da USB
+        if(!bDataUSBReady2)
+        {
+            bCountByte2 = getsUSBUSART(1, InBuff2, sizeof(InBuff2));
+            if(bCountByte2>0)
+            {
+                bDataUSBReady2 = 1;
+                bPosIn2 = 0;
+            }
+        }
+        // Ho preso dati da USB li scrivo su USART se la trasmissione è pronta
+        if(bDataUSBReady2 && TXRdyUSART2())
+        {
+            WriteUSART2(InBuff2[bPosIn2++]);
+            // Una volta che sono stati scritti tutti i byte rileggo da USB
+            if(bPosIn2==bCountByte2)
+                bDataUSBReady2 = 0;
+        }
+            // Se ci sono dati nella USART li leggo e li metto nel buffer
+        // Se arrivano dati ed il buffer è pieno c'è il rischio di perdere i dati
+        if(DataRdyUSART2() && bPosOut2<sizeof(OutBuff2))
+        {
+            OutBuff2[bPosOut2] = ReadUSART2();
+            bPosOut2++;
+        }
+        // Se la USB è pronta per trasmettere e ci sono dati li scrivo su USB
+        if(USBUSARTIsTxTrfReady(1) && bPosOut2>0)
+        {
+            putUSBUSART(1, OutBuff2, bPosOut2);
+            bPosOut2 = 0;
+        }
+        CDCTxService(1);
     }
 }
 
@@ -178,13 +222,9 @@ static __inline void __attribute__((always_inline)) initSystem()
     UARTSetDataRate(UART2, GetPeripheralClock(), 9600);
     UARTEnable(UART2, UART_ENABLE_FLAGS(UART_PERIPHERAL | UART_RX | UART_TX));
 
-    bFlags.Val = 0;
-
+    // TODO riguardare
+    USBInitCDC();
     USBDeviceInit();
-}
-
-static __inline void __attribute__((always_inline)) processData(char cData)
-{
 }
 
 // ******************************************************************************************************

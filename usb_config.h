@@ -65,12 +65,12 @@
 //  a ROM USB_DEVICE_DESCRIPTOR variable by the exact name of device_dsc
 //  must exist.
 #define USB_USER_DEVICE_DESCRIPTOR &device_dsc
-#define USB_USER_DEVICE_DESCRIPTOR_INCLUDE extern ROM USB_DEVICE_DESCRIPTOR device_dsc
+#define USB_USER_DEVICE_DESCRIPTOR_INCLUDE extern const USB_DEVICE_DESCRIPTOR device_dsc
 
 //Configuration descriptors - if these two definitions do not exist then
 //  a ROM BYTE *ROM variable named exactly USB_CD_Ptr[] must exist.
 #define USB_USER_CONFIG_DESCRIPTOR USB_CD_Ptr
-#define USB_USER_CONFIG_DESCRIPTOR_INCLUDE extern ROM BYTE *ROM USB_CD_Ptr[]
+#define USB_USER_CONFIG_DESCRIPTOR_INCLUDE extern const BYTE * USB_CD_Ptr[]
 
 //Make sure only one of the below "#define USB_PING_PONG_MODE"
 //is uncommented.
@@ -78,7 +78,6 @@
 #define USB_PING_PONG_MODE USB_PING_PONG__FULL_PING_PONG
 //#define USB_PING_PONG_MODE USB_PING_PONG__EP0_OUT_ONLY
 //#define USB_PING_PONG_MODE USB_PING_PONG__ALL_BUT_EP0		//NOTE: This mode is not supported in PIC18F4550 family rev A3 devices
-
 
 //#define USB_POLLING
 #define USB_INTERRUPT
@@ -159,19 +158,28 @@
 #define USB_USE_CDC
 
 /** ENDPOINTS ALLOCATION *******************************************/
-#define USB_MAX_EP_NUMBER	    2
+#define USB_MAX_EP_NUMBER	    5
 
 /* CDC */
-#define CDC_COMM_INTF_ID        0x0
-#define CDC_COMM_EP              1
-#define CDC_COMM_IN_EP_SIZE      10
+#define CDC1_COMM_INTF_ID        0x0
+#define CDC1_COMM_EP             2
+#define CDC1_COMM_IN_EP_SIZE     8
 
-#define CDC_DATA_INTF_ID        0x01
-#define CDC_DATA_EP             2
-#define CDC_DATA_OUT_EP_SIZE    64
-#define CDC_DATA_IN_EP_SIZE     64
+#define CDC1_DATA_INTF_ID        0x01
+#define CDC1_DATA_EP             3
+#define CDC1_DATA_OUT_EP_SIZE    64
+#define CDC1_DATA_IN_EP_SIZE     64
 
-//#define USB_CDC_SUPPORT_ABSTRACT_CONTROL_MANAGEMENT_CAPABILITIES_D2 //Send_Break command
+#define CDC2_COMM_INTF_ID        0x02
+#define CDC2_COMM_EP             4
+#define CDC2_COMM_IN_EP_SIZE     8
+
+#define CDC2_DATA_INTF_ID        0x03
+#define CDC2_DATA_EP             5
+#define CDC2_DATA_OUT_EP_SIZE    64
+#define CDC2_DATA_IN_EP_SIZE     64
+
+#define USB_CDC_SUPPORT_ABSTRACT_CONTROL_MANAGEMENT_CAPABILITIES_D2 //Send_Break command
 #define USB_CDC_SUPPORT_ABSTRACT_CONTROL_MANAGEMENT_CAPABILITIES_D1 //Set_Line_Coding, Set_Control_Line_State, Get_Line_Coding, and Serial_State commands
 /** DEFINITIONS ****************************************************/
 
