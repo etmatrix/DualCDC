@@ -42,7 +42,7 @@
 
 #include "USB/usb.h"
 #include "USB/usb_device.h"
-#include "USB/usb_function_cdc.h"
+#include <usb_function_cdc.h>
 
 #include "GenericTypeDefs.h"
 #include "Compiler.h"
@@ -52,10 +52,10 @@
 #pragma udata
 //char asInBuff[CDC_DATA_IN_EP_SIZE];
 //char asOutBuff[CDC_DATA_OUT_EP_SIZE];
-char InBuff1[CDC_DATA_IN_EP_SIZE];
-char OutBuff1[CDC_DATA_OUT_EP_SIZE];
-char InBuff2[CDC_DATA_IN_EP_SIZE];
-char OutBuff2[CDC_DATA_OUT_EP_SIZE];
+char InBuff1[CDC1_DATA_IN_EP_SIZE];
+char OutBuff1[CDC1_DATA_OUT_EP_SIZE];
+char InBuff2[CDC2_DATA_IN_EP_SIZE];
+char OutBuff2[CDC2_DATA_OUT_EP_SIZE];
 
 // Buffer Heap di 128 byte
 //UINT8_BITS bFlags;
@@ -97,6 +97,7 @@ int main(void)
         if(USBDeviceState < CONFIGURED_STATE || USBSuspendControl==1)
             continue;
 
+#if 0
         /************* Seriale 1 *****************/
 
         // Se ci sono dati da trasmettere su USART rileggo da USB
@@ -166,6 +167,7 @@ int main(void)
             bPosOut2 = 0;
         }
         CDCTxService(1);
+#endif
     }
 }
 
@@ -391,7 +393,9 @@ void USBCBErrorHandler(void)
  *******************************************************************/
 void USBCBCheckOtherReq(void)
 {
-    USBCheckCDCRequest();
+    UINT8 i;
+    for (i = 0; i < NUM_CDC_INTERFACES; i++)
+        USBCheckCDCRequest(i);
 }//end
 
 
@@ -442,7 +446,9 @@ void USBCBStdSetDscHandler(void)
  *******************************************************************/
 void USBCBInitEP(void)
 {
-    CDCInitEP();
+    UINT8 i;
+    for (i = 0; i < NUM_CDC_INTERFACES; i++)
+        CDCInitEP(i);
 }
 
 /********************************************************************

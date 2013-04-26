@@ -11,7 +11,7 @@
  
 /** INCLUDES *******************************************************/
 #include "USB/usb.h"
-#include "USB/usb_function_cdc.h"
+#include <usb_function_cdc.h>
 
 /** CONSTANTS ******************************************************/
 /* Device Descriptor */
